@@ -30,12 +30,18 @@ from .config import IONConfig
 from .layers import IONLinear, RewireResult
 from .rewire import ion_layers, ion_parameters, rewire, rewire_stats
 from .builder import build_model
+from .data import ImageDataset, ImageIterableDataset, image_to_tensor, load_image_dataset, wrap_image_dataset
 
 __all__ = [
     "IONConfig",
     "IONLinear",
     "RewireResult",
     "build_model",
+    "load_image_dataset",
+    "wrap_image_dataset",
+    "ImageDataset",
+    "ImageIterableDataset",
+    "image_to_tensor",
     "ion_layers",
     "ion_parameters",
     "rewire",

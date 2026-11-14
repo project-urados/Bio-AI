@@ -72,3 +72,42 @@ Config can be set per layer (`config=`, keyword overrides, or the spec's
 pip install torch pytest
 python -m pytest tests
 ```
+
+## Training on Hugging Face image datasets
+
+`ion.data` takes the output of `datasets.load_dataset` and returns PyTorch
+datasets whose items are dicts: `image` (float tensor in `[0, 1]`) plus the
+other columns. It works with the Pixel Art Atlas dataset, which has `image`,
+`caption`, `subject` and `row_id` columns:
+
+```python
+from torch.utils.data import DataLoader
+from ion import IONLinear, build_model, load_image_dataset, rewire
+
+# Same as load_dataset("Angais/pixel-art-atlas-1.4m"), but wrapped for PyTorch
+splits = load_image_dataset(
+    "Angais/pixel-art-atlas-1.4m",
+    streaming=True,       # no 1.4M-image download
+    flatten=True,         # (B, 1024) vectors for MLPs; omit for (B, 4, 16, 16)
+    keep=["caption"],     # columns to return besides "image"
+    shuffle_buffer=10_000,  # train split only; see memory note below
+)
+train_loader = DataLoader(splits["train"], batch_size=128)
+val_loader = DataLoader(splits["validation"], batch_size=128)
+
+for batch in train_loader:
+    batch["image"]    # (128, 1024) float tensor, RGBA values in [0, 1]
+    batch["caption"]  # list[str]
+    ...
+```
+
+- Without `streaming=True` you get map-style datasets, which support random access
+  and `len()`. Downloading the full set is about 1.2 GB.
+- `image_to_tensor` converts a single PIL image or array, and `wrap_image_dataset`
+  wraps a dataset you already loaded yourself.
+- Memory: `shuffle_buffer` keeps that many decoded examples in RAM (about 4 KB each
+  as float32, so 10,000 is roughly 40 MB). It uses a local buffer, not the `datasets`
+  library's shuffle, which ran out of memory on a 1 GB machine even at small sizes.
+  Streaming without shuffling needs about 0.5 GB on this dataset.
+- `datasets` is imported only when you call `load_image_dataset`, so the rest of
+  `ion` works without it.
